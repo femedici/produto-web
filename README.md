@@ -47,8 +47,7 @@ flutter run
 
 Após a inicialização,, a aplicação junto da sua inicialização, basta acessar o `localhost` disposto no seu terminal para acessar a aplicação.
 
-**IMPORTANTE!**
-- ao iniciar o backend, é rodado um script que já popula o banco de dados com produtos.
+**IMPORTANTE!** ao iniciar o backend, é rodado um script que já popula o banco de dados com produtos.
 
 ## Licença
 O projeto utiliza a Licença de Software Livre MIT.
