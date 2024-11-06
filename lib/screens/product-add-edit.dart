@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/product.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
+import '../stores/product-store.dart';
 
 class AddEditProductScreen extends StatefulWidget {
   final Product? product;
@@ -19,7 +18,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
   late double _preco;
   late String _data;
   late int _estoque;
-  final String apiUrl ='http://localhost:3000';
+  final ProductStore _productStore = ProductStore();
 
   @override
   void initState() {
@@ -32,136 +31,104 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     } else {
       _descricao = '';
       _preco = 0.0;
-      _data = '';
+      _data = ''; 
       _estoque = 0;
     }
   }
 
   Future<void> _saveForm() async {
-    if (_formKey.currentState!.validata()) {
+    if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
       final product = Product(
-        id: widget.product?.id ?? '',
+        id: widget.product?.id ?? 0,
         descricao: _descricao,
         preco: _preco,
         data: _data,
         estoque: _estoque,
       );
-       try {
+
+      try {
         if (widget.isEditing) {
-          await _updataProduct(product);
+          await _productStore.updateProduct(product);
         } else {
-          await _addProduct(product);
+          await _productStore.addProduct(product);
         }
         Navigator.of(context).pop(product);
       } catch (error) {
-        // Handle error (e.g., show a snackbar or dialog)
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erro ao salvar o produto')),
+          SnackBar(content: Text('Erro ao salvar o produto: $error')),
         );
       }
     }
   }
 
-  Future<void> _addProduct(Product product) async {
-    final url = Uri.parse('$apiUrl/products');
-    final response = await http.post(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: json.encode(product.toJson()),
+  Future<void> _selectDate(BuildContext context) async {
+    DateTime? pickedDate = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
     );
-
-    if (response.statusCode != 201) {
-      throw Exception('Erro ao adicionar produto');
-    }
-  }
-
-  Future<void> _updataProduct(Product product) async {
-    final url = Uri.parse('$apiUrl//products/${product.id}');
-    final response = await http.put(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: json.encode(product.toJson()),
-    );
-
-    if (response.statusCode != 200) {
-      throw Exception('Erro ao atualizar produto');
+    if (pickedDate != null) {
+      setState(() {
+        _data = pickedDate.toIso8601String(); // Formato de string ISO 8601
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.isEditing ? 'Editar Produto' : 'Adicionar Produto'),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
+    return AlertDialog(
+      title: Text(widget.isEditing ? 'Editar Produto' : 'Adicionar Produto'),
+      content: Form(
+        key: _formKey,
+        child: SingleChildScrollView(
           child: Column(
             children: [
               TextFormField(
                 initialValue: _descricao,
                 decoration: InputDecoration(labelText: 'Nome do Produto'),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Por favor, insira o nome do produto';
-                  }
-                  return null;
-                },
+                validator: (value) => value == null || value.isEmpty ? 'Insira o nome' : null,
                 onSaved: (value) => _descricao = value!,
               ),
               TextFormField(
                 initialValue: _preco.toString(),
-                decoration: InputDecoration(labelText: 'Custo'),
+                decoration: InputDecoration(labelText: 'Preço'),
                 keyboardType: TextInputType.number,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Por favor, insira o custo';
-                  }
-                  if (double.tryParse(value) == null) {
-                    return 'Por favor, insira um valor numérico';
-                  }
-                  return null;
-                },
+                validator: (value) => double.tryParse(value!) == null ? 'Preço inválido' : null,
                 onSaved: (value) => _preco = double.parse(value!),
               ),
               TextFormField(
-                initialValue: _data,
-                decoration: InputDecoration(labelText: 'Data'),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Por favor, insira a data';
-                  }
-                  return null;
-                },
-                onSaved: (value) => _data = value!,
-              ),
-              TextFormField(
                 initialValue: _estoque.toString(),
-                decoration: InputDecoration(labelText: 'Quantidade em Estoque'),
+                decoration: InputDecoration(labelText: 'Estoque'),
                 keyboardType: TextInputType.number,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Por favor, insira a quantidade em estoque';
-                  }
-                  if (int.tryParse(value) == null) {
-                    return 'Por favor, insira um número inteiro';
-                  }
-                  return null;
-                },
+                validator: (value) => int.tryParse(value!) == null ? 'Estoque inválido' : null,
                 onSaved: (value) => _estoque = int.parse(value!),
               ),
-              SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: _saveForm,
-                child: Text(widget.isEditing ? 'Salvar Alterações' : 'Adicionar Produto'),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(_data.isEmpty ? 'Selecione uma data' : 'Data: $_data'.substring(0, 16)),
+                  IconButton(
+                    icon: Icon(Icons.calendar_today),
+                    onPressed: () => _selectDate(context),
+                  ),
+                ],
               ),
             ],
           ),
         ),
       ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text('Cancelar'),
+        ),
+        ElevatedButton(
+          onPressed: _saveForm,
+          child: Text('Salvar'),
+        ),
+      ],
     );
   }
 }

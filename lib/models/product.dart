@@ -1,11 +1,11 @@
 class Product {
   final int id;
-  final String descricao;  
-  final String preco;
+  final String descricao;
+  final double preco;
   final int estoque;
   final String data;
 
-    Product({
+  Product({
     required this.id,
     required this.descricao,
     required this.preco,
@@ -15,17 +15,16 @@ class Product {
 
   factory Product.fromJson(Map<String, dynamic> json) {
     return Product(
-      id: json['id'] ?? 0,  // Se 'id' for null, atribui 0
-      descricao: json['descricao'] ?? '',  // Se 'descricao' for null, atribui uma string vazia
-      preco: json['preco'] ?? '0',  // Se 'preco' for null, atribui '0'
-      estoque: json['estoque'] ?? 0,  // Se 'estoque' for null, atribui 0
-      data: json['data'] ?? '',  // Se 'data' for null, atribui uma string vazia
+      id: json['id'] ?? 0,
+      descricao: json['descricao'] ?? '',
+      preco: json['preco'] is String ? double.tryParse(json['preco']) ?? 0.0 : (json['preco'] ?? 0).toDouble(),
+      estoque: json['estoque'] ?? 0,
+      data: json['data'] ?? '',
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
       'descricao': descricao,
       'preco': preco,
       'estoque': estoque,

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/product.dart';
-import 'product-add-edit.dart';
 import '../stores/product-store.dart';
+import '../screens/product-add-edit.dart';
 
 class ProductListScreen extends StatefulWidget {
   @override
@@ -12,72 +12,84 @@ class _ProductListScreenState extends State<ProductListScreen> {
   final ProductStore _productStore = ProductStore();
   List<Product> products = [];
 
-  void _addOrEditProduct({Product? product, required bool isEditing}) async {
-    @override
-    void initState() {
-      super.initState();
-      _fetchProducts();
-    }
+  @override
+  void initState() {
+    super.initState();
+    _fetchProducts();
+  }
 
-    Future<void> _fetchProducts() async {
-      try {
-        final fetchedProducts = await _productStore.fetchProducts();
-        setState(() {
-          products = fetchedProducts;
-        });
-      } catch (error) {
-        print('Error fetching products: $error');
-      }
-    }
+  Future<void> _fetchProducts() async {
+    final fetchedProducts = await _productStore.fetchProducts();
+    setState(() {
+      products = fetchedProducts;
+    });
+  }
 
-    Future<void> _addOrEditProduct({Product? product, required bool isEditing}) async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => AddEditProductScreen(
-          product: product,
-          isEditing: isEditing,
-        ),
+  void _openProductModal({Product? product, required bool isEditing}) async {
+    final result = await showDialog<Product>(
+      context: context,
+      builder: (context) => AddEditProductScreen(product: product, isEditing: isEditing),
+    );
+
+    if (result != null) {
+      _fetchProducts(); 
+    }
+  }
+
+  Future<void> _confirmDeleteProduct(Product product) async {
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Confirmação'),
+        content: Text('Deseja excluir o produto "${product.descricao}"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text('Excluir'),
+          ),
+        ],
       ),
     );
 
-    if (result != null && result is Product) {
-      setState(() {
-        if (isEditing) {
-          int index = products.indexOf(product!);
-          products[index] = result;
-        } else {
-          _productStore.addProduct(result);
-          products.add(result);
-        }
-      });
+    if (confirmed == true) {
+      await _deleteProduct(product);
     }
   }
 
-  void _deleteProduct(Product product) async {
+  Future<void> _deleteProduct(Product product) async {
     try {
       await _productStore.deleteProduct(product.id);
+      
       setState(() {
         products.remove(product);
       });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Produto excluído com sucesso')),
+      );
     } catch (error) {
-      print('Error deleting product: $error');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erro ao excluir produto: $error')),
+      );
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
+       appBar: AppBar(
         title: Row(
           children: [
             Image.asset(
-              '../images/UTFPR_logo.png', // Caminho da imagem local na pasta assets
-              width: 90, // Largura da imagem
-              height: 60, // Altura da imagem
+              '../images/UTFPR_logo.png', 
+              width: 90,
+              height: 60, 
             ),
-            const SizedBox(width: 30), // Espaço entre a imagem e o texto
+            const SizedBox(width: 30),
             const Text(
               'API de Produtos',
               style: TextStyle(color: Colors.black),
@@ -86,35 +98,25 @@ class _ProductListScreenState extends State<ProductListScreen> {
         ),
         backgroundColor: Colors.white,
         iconTheme: IconThemeData(
-            color: Colors.black), // Define a cor dos ícones como preto
-        elevation: 4.0, // Altura da sombra
-        shadowColor: Colors.grey.withOpacity(0.5), // Cor da sombra
+            color: Colors.black), 
+        elevation: 4.0, 
+        shadowColor: Colors.grey.withOpacity(0.5),
       ),
-      body: ListView.builder(
-        itemCount: products.length,
-        itemBuilder: (context, index) {
-          final product = products[index];
-          return ListTile(
-            title: Text(product.name),
-            subtitle: Text('Custo: ${product.cost}, Estoque: ${product.stock}'),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  icon: Icon(Icons.edit),
-                  onPressed: () => _addOrEditProduct(product: product, isEditing: true),
-                ),
-                IconButton(
-                  icon: Icon(Icons.delete),
-                  onPressed: () => _deleteProduct(product),
-                ),
-              ],
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Text(
+              'Lista de Produtos',
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
           ),
           Expanded(
             child: ListView.separated(
               itemCount: products.length,
-              separatorBuilder: (context, index) => const Divider(), // Divider entre os cards
+              separatorBuilder: (context, index) => const Divider(),
               itemBuilder: (context, index) {
                 final product = products[index];
                 return Card(
@@ -123,44 +125,42 @@ class _ProductListScreenState extends State<ProductListScreen> {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          product.name,
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 8),
-                        Text('Custo: \$${product.cost}'),
-                        Text('Data: ${product.date}'),
-                        Text('Estoque: ${product.stock} unidades'),
-                        const SizedBox(height: 8),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            IconButton(
-                              icon: Icon(Icons.edit, color: Colors.black),
-                              onPressed: () => _addOrEditProduct(
-                                  product: product, isEditing: true),
-                            ),
-                            IconButton(
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: () => _openProductModal(product: product, isEditing: true),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            product.descricao,
+                            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 8),
+                          Text('Preço: \$${product.preco}', style: TextStyle(fontSize: 16)),
+                          Text('Data: ${product.data.substring(0, 10)}', style: TextStyle(fontSize: 16)),
+                          Text('Estoque: ${product.estoque} unidades', style: TextStyle(fontSize: 16)),
+                          const SizedBox(height: 8),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: IconButton(
                               icon: Icon(Icons.delete, color: Colors.black),
-                              onPressed: () => _deleteProduct(product),
+                              onPressed: () => _confirmDeleteProduct(product),
                             ),
-                          ],
-                        ),
-                      ],
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 );
               },
             ),
           ),
+        ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _addOrEditProduct(isEditing: false),
+        onPressed: () => _openProductModal(isEditing: false),
         icon: Icon(Icons.add),
         label: Text(
           'Adicionar Produto',
