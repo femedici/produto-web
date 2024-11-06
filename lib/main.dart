@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'screens/product-list.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-void main() async{
-  await dotenv.load(fileName: ".env");
+void main() {
   runApp(MyApp());
 }
 
