@@ -1,6 +1,12 @@
 # Produto WEB 
 > Aplicação desenvolvida para a matéria de Desenvolvimento de Aplicativos
 
+> Tela de Listagem (Principal)
+<img src="/images/image.png" alt="tela">
+
+> Tela de Criar/Editar produtos
+<img src="/images/image2.png" alt="tela2">
+
 ## Pré-requisitos
 - [Flutter](https://docs.flutter.dev/get-started/install)
 
