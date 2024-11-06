@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import '../models/product.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class AddEditProductScreen extends StatefulWidget {
   final Product? product;
@@ -17,6 +20,8 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
   late double _cost;
   late String _date;
   late int _stock;
+  final String apiUrl =
+      'http://${dotenv.env['API_HOST']}:${dotenv.env['API_PORT']}';
 
   @override
   void initState() {
@@ -34,16 +39,56 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     }
   }
 
-  void _saveForm() {
+  Future<void> _saveForm() async {
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
       final product = Product(
+        id: widget.product?.id ?? '',
         name: _name,
         cost: _cost,
         date: _date,
         stock: _stock,
       );
-      Navigator.of(context).pop(product);
+
+      try {
+        if (widget.isEditing) {
+          await _updateProduct(product);
+        } else {
+          await _addProduct(product);
+        }
+        Navigator.of(context).pop(product);
+      } catch (error) {
+        // Handle error (e.g., show a snackbar or dialog)
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao salvar o produto')),
+        );
+      }
+    }
+  }
+
+  Future<void> _addProduct(Product product) async {
+    final url = Uri.parse('$apiUrl/products');
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode(product.toJson()),
+    );
+
+    if (response.statusCode != 201) {
+      throw Exception('Erro ao adicionar produto');
+    }
+  }
+
+  Future<void> _updateProduct(Product product) async {
+    final url = Uri.parse('$apiUrl//products/${product.id}');
+    final response = await http.put(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode(product.toJson()),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Erro ao atualizar produto');
     }
   }
 
