@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/product.dart';
 import 'product-add-edit.dart';
+import '../stores/product-store.dart';
 
 class ProductListScreen extends StatefulWidget {
   @override
@@ -8,13 +9,28 @@ class ProductListScreen extends StatefulWidget {
 }
 
 class _ProductListScreenState extends State<ProductListScreen> {
-  List<Product> products = [
-    Product(name: 'Produto 1', cost: 10.0, date: '01/01/2024', stock: 20),
-    Product(name: 'Produto 2', cost: 20.0, date: '02/01/2024', stock: 15),
-    // Adicione mais produtos conforme necessário
-  ];
+  final ProductStore _productStore = ProductStore();
+  List<Product> products = [];
 
   void _addOrEditProduct({Product? product, required bool isEditing}) async {
+    @override
+    void initState() {
+      super.initState();
+      _fetchProducts();
+    }
+
+    Future<void> _fetchProducts() async {
+      try {
+        final fetchedProducts = await _productStore.fetchProducts();
+        setState(() {
+          products = fetchedProducts;
+        });
+      } catch (error) {
+        print('Error fetching products: $error');
+      }
+    }
+
+    Future<void> _addOrEditProduct({Product? product, required bool isEditing}) async {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
@@ -31,51 +47,23 @@ class _ProductListScreenState extends State<ProductListScreen> {
           int index = products.indexOf(product!);
           products[index] = result;
         } else {
+          _productStore.addProduct(result);
           products.add(result);
         }
       });
     }
   }
 
-void _deleteProduct(Product product) {
-  // Exibe o AlertDialog para confirmar a exclusão
-  showDialog(
-    context: context,
-    builder: (BuildContext context) {
-      return AlertDialog(
-        title: Text('Confirmar Exclusão'),
-        content: Text('Você tem certeza que deseja excluir este produto?'),
-        actions: <Widget>[
-          // Botão "Cancelar"
-          OutlinedButton(
-            onPressed: () {
-              // Fecha o diálogo e não faz nada
-              Navigator.of(context).pop();
-            },
-            child: Text('Cancelar'),
-            style: TextButton.styleFrom(
-              foregroundColor: Colors.black, // Cor do texto do botão
-            ),
-          ),
-          // Botão "Excluir"
-          OutlinedButton(
-            onPressed: () {
-              // Fecha o diálogo e exclui o produto
-              setState(() {
-                products.remove(product);
-              });
-              Navigator.of(context).pop(); // Fecha o diálogo após a exclusão
-            },
-            child: Text('Excluir'),
-            style: TextButton.styleFrom(
-              foregroundColor: Colors.black, // Cor do texto do botão
-            ),
-          ),
-        ],
-      );
-    },
-  );
-}
+  void _deleteProduct(Product product) async {
+    try {
+      await _productStore.deleteProduct(product.id);
+      setState(() {
+        products.remove(product);
+      });
+    } catch (error) {
+      print('Error deleting product: $error');
+    }
+  }
 
 
   @override
@@ -102,15 +90,25 @@ void _deleteProduct(Product product) {
         elevation: 4.0, // Altura da sombra
         shadowColor: Colors.grey.withOpacity(0.5), // Cor da sombra
       ),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Título antes da listagem de produtos
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Text(
-              'Lista de Produtos',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+      body: ListView.builder(
+        itemCount: products.length,
+        itemBuilder: (context, index) {
+          final product = products[index];
+          return ListTile(
+            title: Text(product.name),
+            subtitle: Text('Custo: ${product.cost}, Estoque: ${product.stock}'),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: Icon(Icons.edit),
+                  onPressed: () => _addOrEditProduct(product: product, isEditing: true),
+                ),
+                IconButton(
+                  icon: Icon(Icons.delete),
+                  onPressed: () => _deleteProduct(product),
+                ),
+              ],
             ),
           ),
           Expanded(
@@ -160,7 +158,6 @@ void _deleteProduct(Product product) {
               },
             ),
           ),
-        ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _addOrEditProduct(isEditing: false),

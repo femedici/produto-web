@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/product.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class AddEditProductScreen extends StatefulWidget {
   final Product? product;
@@ -13,37 +15,77 @@ class AddEditProductScreen extends StatefulWidget {
 
 class _AddEditProductScreenState extends State<AddEditProductScreen> {
   final _formKey = GlobalKey<FormState>();
-  late String _name;
-  late double _cost;
-  late String _date;
-  late int _stock;
+  late String _descricao;
+  late double _preco;
+  late String _data;
+  late int _estoque;
+  final String apiUrl ='http://localhost:3000';
 
   @override
   void initState() {
     super.initState();
     if (widget.isEditing && widget.product != null) {
-      _name = widget.product!.name;
-      _cost = widget.product!.cost;
-      _date = widget.product!.date;
-      _stock = widget.product!.stock;
+      _descricao = widget.product!.descricao;
+      _preco = widget.product!.preco;
+      _data = widget.product!.data;
+      _estoque = widget.product!.estoque;
     } else {
-      _name = '';
-      _cost = 0.0;
-      _date = '';
-      _stock = 0;
+      _descricao = '';
+      _preco = 0.0;
+      _data = '';
+      _estoque = 0;
     }
   }
 
-  void _saveForm() {
-    if (_formKey.currentState!.validate()) {
+  Future<void> _saveForm() async {
+    if (_formKey.currentState!.validata()) {
       _formKey.currentState!.save();
       final product = Product(
-        name: _name,
-        cost: _cost,
-        date: _date,
-        stock: _stock,
+        id: widget.product?.id ?? '',
+        descricao: _descricao,
+        preco: _preco,
+        data: _data,
+        estoque: _estoque,
       );
-      Navigator.of(context).pop(product);
+       try {
+        if (widget.isEditing) {
+          await _updataProduct(product);
+        } else {
+          await _addProduct(product);
+        }
+        Navigator.of(context).pop(product);
+      } catch (error) {
+        // Handle error (e.g., show a snackbar or dialog)
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao salvar o produto')),
+        );
+      }
+    }
+  }
+
+  Future<void> _addProduct(Product product) async {
+    final url = Uri.parse('$apiUrl/products');
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode(product.toJson()),
+    );
+
+    if (response.statusCode != 201) {
+      throw Exception('Erro ao adicionar produto');
+    }
+  }
+
+  Future<void> _updataProduct(Product product) async {
+    final url = Uri.parse('$apiUrl//products/${product.id}');
+    final response = await http.put(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode(product.toJson()),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Erro ao atualizar produto');
     }
   }
 
@@ -60,7 +102,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
           child: Column(
             children: [
               TextFormField(
-                initialValue: _name,
+                initialValue: _descricao,
                 decoration: InputDecoration(labelText: 'Nome do Produto'),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
@@ -68,10 +110,10 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                   }
                   return null;
                 },
-                onSaved: (value) => _name = value!,
+                onSaved: (value) => _descricao = value!,
               ),
               TextFormField(
-                initialValue: _cost.toString(),
+                initialValue: _preco.toString(),
                 decoration: InputDecoration(labelText: 'Custo'),
                 keyboardType: TextInputType.number,
                 validator: (value) {
@@ -83,10 +125,10 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                   }
                   return null;
                 },
-                onSaved: (value) => _cost = double.parse(value!),
+                onSaved: (value) => _preco = double.parse(value!),
               ),
               TextFormField(
-                initialValue: _date,
+                initialValue: _data,
                 decoration: InputDecoration(labelText: 'Data'),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
@@ -94,10 +136,10 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                   }
                   return null;
                 },
-                onSaved: (value) => _date = value!,
+                onSaved: (value) => _data = value!,
               ),
               TextFormField(
-                initialValue: _stock.toString(),
+                initialValue: _estoque.toString(),
                 decoration: InputDecoration(labelText: 'Quantidade em Estoque'),
                 keyboardType: TextInputType.number,
                 validator: (value) {
@@ -109,7 +151,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                   }
                   return null;
                 },
-                onSaved: (value) => _stock = int.parse(value!),
+                onSaved: (value) => _estoque = int.parse(value!),
               ),
               SizedBox(height: 20),
               ElevatedButton(
